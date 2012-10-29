@@ -1,7 +1,9 @@
 smartos-ancestry
 ================
 
-Show the "ancestry" if installed VM:s. Like so:
+Show the "ancestry" of installed VM:s, i.e. what image they are based on. This
+can be useful when wondering what old images can be removed from a host or what
+VM:s should be upgraded/migrated. Like so:
 
 ```
 [root@00-25-90-38-94-04 ~]# vmadm list
@@ -35,6 +37,11 @@ Installing
 ----------
 
 Drop `bin/*` (script + `node_modules`) into `/opt/local/bin`. Enjoy.
+
+Bugs and Limitations
+--------------------
+
+See the [issue tracker](https://github.com/calmh/smartos-ancestry/issues)
 
 License
 -------
