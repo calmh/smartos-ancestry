@@ -36,7 +36,7 @@ zbuilder         sdc:sdc:smartos:1.6.3
 Installing
 ----------
 
-Drop `bin/*` (script + `node_modules`) into `/opt/local/bin`. Enjoy.
+Drop the `ancestry` script into `/opt/local/bin`. Enjoy.
 
 Bugs and Limitations
 --------------------
