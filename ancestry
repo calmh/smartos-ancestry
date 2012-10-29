@@ -91,15 +91,16 @@ if (process.platform !== 'sunos') {
 
 // -- main --
 
-function printVm(vms, imgs, idx) {
+var res = [];
+function getAllVMs(vms, imgs, cb) {
+    var idx = res.length;
     if (idx < vms.length) {
         vmadmGet(vms[idx], imgs, function (err, r) {
-            var sl = colwidth - r.alias.length;
-            var sp = spacer.substr(0, sl);
-            console.log(r.alias + sp + (r.img_name || '<Unknown>'));
+            res.push([r.vm, r.alias, r.img_name]);
+            getAllVMs(vms, imgs, cb);
         });
-
-        printVm(vms, imgs, idx + 1);
+    } else {
+        cb(res);
     }
 }
 
@@ -108,7 +109,19 @@ vmadmList(function (err, vms) {
 
     imgadmList(function (err, imgs) {
         if (err) { throw err; }
-        printVm(vms, imgs, 0);
+        getAllVMs(vms, imgs, function (lines) {
+            console.log('UUID                                  ALIAS            IMAGE');
+            lines.sort();
+            for (var i = 0; i < lines.length; i++) {
+                var uuid = lines[i][0];
+                var alias = lines[i][1];
+                var image = lines[i][2];
+                var sl = colwidth - alias.length;
+                var sp = spacer.substr(0, sl);
+                console.log(uuid + '  ' + alias + sp + ' ' + (image || '<Unknown>'));
+            }
+        });
     });
 });
 
+// vim: set ft=javascript:
