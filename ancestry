@@ -1,0 +1,48 @@
+#!/usr/node/bin/node
+
+var async = require('async');
+var sprint = require('sprint');
+
+var exec = require('child_process').exec;
+
+function listVMs(cb) {
+    exec('vmadm list -p', function (error, stdout, stderr) {
+        var lines = stdout.split('\n');
+        var uuids = lines.map(function (line) { return line.split(':')[0]; }).filter(function (u) { return u.length > 0; });
+        cb(null, uuids);
+    });
+}
+
+function listImgs(cb) {
+    exec('imgadm list', function (error, stdout, stderr) {
+        var lines = stdout.split('\n');
+        var imgs = {};
+        lines.forEach(function (line) {
+            var fields = line.split(/ +/);
+            if (fields[0].length > 0) {
+                imgs[fields[0]] = fields[3];
+            }
+        });
+        cb(null, imgs);
+    });
+}
+
+async.series([ listVMs, listImgs ], function (err, res) {
+    function mapImage(vm, cb) {
+        exec('vmadm get ' + vm, function (err, stdout, stderr) {
+            var obj = JSON.parse(stdout);
+            var iuuid = obj.image_uuid || obj.disks[0].image_uuid;
+            var vmobj = {vm: vm, alias: obj.alias, img: iuuid, img_name: imgs[iuuid]};
+            cb(null, vmobj);
+        });
+    }
+
+    var vms = res[0];
+    var imgs = res[1];
+    async.map(vms, mapImage, function (err, res) {
+        res.forEach(function (r) {
+            console.log(sprint('%-16s %s', r.alias, r.img_name || '<Unknown>'));
+        });
+    });
+});
+
