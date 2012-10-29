@@ -31,6 +31,11 @@ winsrv           <Unknown>
 zbuilder         sdc:sdc:smartos:1.6.3
 ```
 
+Installing
+----------
+
+Drop the entire thing (script + `node_modules`) into `/opt/local/bin`. Enjoy.
+
 License
 -------
 
