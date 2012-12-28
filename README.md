@@ -6,38 +6,43 @@ can be useful when wondering what old images can be removed from a host or what
 VM:s should be upgraded/migrated. Like so:
 
 ```
-[root@00-25-90-38-94-04 ~]# vmadm list
+[root@anto ~]# vmadm list
 UUID                                  TYPE  RAM      STATE             ALIAS
-183b9ce8-38c6-460b-a5d1-9bb139be0f34  OS    1024     running           zcube
-73667e3a-8a6e-45a7-8986-09431b68268d  OS    1024     stopped           zdjango
-8061c37a-5ec3-47e8-80d7-da9fa204fde1  OS    1024     running           zmailbk
-b2535e73-0892-4183-9e02-0255c6dde661  OS    1024     running           zbackup
-ba1f8d92-2ca2-4f01-9939-fa2de11a535e  OS    1024     running           zlogin
-e39c6382-3c22-4896-95b7-3e6515a6b26e  OS    1024     running           zpuppet
-0d6e2251-aa11-452b-afb7-e43c8e7bfe1c  KVM   2048     running           udev
-2828fed8-bc9e-4bb1-b165-be3534d93e19  KVM   2048     stopped           jenkins
+81035ab6-9827-448d-9208-87eeb7d35891  KVM   256      running           dropbox
+0d6e2251-aa11-452b-afb7-e43c8e7bfe1c  KVM   512      running           plex
+183b9ce8-38c6-460b-a5d1-9bb139be0f34  OS    512      running           zcube
+1bbb6dd3-6abd-47b9-8485-a7afe0b727d5  OS    512      running           zafps
+8061c37a-5ec3-47e8-80d7-da9fa204fde1  OS    512      running           zmailbk
+8491ba2d-1ffc-4219-879d-d8f7384780d9  KVM   512      running           zabbix
+b2535e73-0892-4183-9e02-0255c6dde661  OS    512      running           zbackup
+ba1f8d92-2ca2-4f01-9939-fa2de11a535e  OS    512      running           zlogin
+e39c6382-3c22-4896-95b7-3e6515a6b26e  OS    512      running           zpuppet
+556004f2-36ec-4483-8e1e-5af188f0db7c  KVM   768      running           unifi
+f993583b-2a17-4751-948d-b454f6ba720f  KVM   768      running           gitlab
 7dc0f886-5faa-4534-a68e-8277e167464e  KVM   2048     running           psm
-9cebcdfe-dc65-4d08-890e-c286e407fa0f  KVM   2048     stopped           winsrv
-0f5af601-51c1-4784-8d44-2ee86d36c8d2  OS    32768    running           zbuilder
-[root@00-25-90-38-94-04 ~]# ancestry 
-UUID                                  ALIAS            IMAGE
-0d6e2251-aa11-452b-afb7-e43c8e7bfe1c  udev             smartos:nym:ubuntu64:12.4.1
-0f5af601-51c1-4784-8d44-2ee86d36c8d2  zbuilder         sdc:sdc:smartos:1.6.3
-183b9ce8-38c6-460b-a5d1-9bb139be0f34  zcube            sdc:sdc:standard64:1.0.1
-2828fed8-bc9e-4bb1-b165-be3534d93e19  jenkins          smartos:nym:ubuntu64:12.4.1
-73667e3a-8a6e-45a7-8986-09431b68268d  zdjango          sdc:sdc:standard64:1.0.7
-7dc0f886-5faa-4534-a68e-8277e167464e  psm              <Unknown>
-8061c37a-5ec3-47e8-80d7-da9fa204fde1  zmailbk          sdc:sdc:standard64:1.0.1
-9cebcdfe-dc65-4d08-890e-c286e407fa0f  winsrv           <Unknown>
-b2535e73-0892-4183-9e02-0255c6dde661  zbackup          sdc:sdc:smartos64:1.6.3
-ba1f8d92-2ca2-4f01-9939-fa2de11a535e  zlogin           sdc:sdc:standard64:1.0.4
-e39c6382-3c22-4896-95b7-3e6515a6b26e  zpuppet          sdc:sdc:standard64:1.0.7
+bc3d93e3-ee95-471a-8341-02881794fcfa  OS    32768    stopped           zbuilder
+[root@anto ~]# ancestry
+UUID                                  ALIAS             IMAGE                           PUBLISHED
+81035ab6-9827-448d-9208-87eeb7d35891  dropbox           smartos:nym:ubuntu64:12.4.1     2012-10-14
+0d6e2251-aa11-452b-afb7-e43c8e7bfe1c  plex              smartos:nym:ubuntu64:12.4.1     2012-10-14
+183b9ce8-38c6-460b-a5d1-9bb139be0f34  zcube             sdc:sdc:standard64:1.0.1        2012-07-13
+1bbb6dd3-6abd-47b9-8485-a7afe0b727d5  zafps             sdc:sdc:standard64:1.0.7        2012-08-30
+8061c37a-5ec3-47e8-80d7-da9fa204fde1  zmailbk           sdc:sdc:standard64:1.0.1        2012-07-13
+8491ba2d-1ffc-4219-879d-d8f7384780d9  zabbix            -                               -
+b2535e73-0892-4183-9e02-0255c6dde661  zbackup           sdc:sdc:smartos64:1.6.3         2012-05-02
+ba1f8d92-2ca2-4f01-9939-fa2de11a535e  zlogin            sdc:sdc:standard64:1.0.4        2012-07-30
+e39c6382-3c22-4896-95b7-3e6515a6b26e  zpuppet           sdc:sdc:standard64:1.0.7        2012-08-30
+556004f2-36ec-4483-8e1e-5af188f0db7c  unifi             smartos:nym:ubuntu64:12.4.1     2012-10-14
+f993583b-2a17-4751-948d-b454f6ba720f  gitlab            smartos:nym:ubuntu64:12.4.1     2012-10-14
+7dc0f886-5faa-4534-a68e-8277e167464e  psm               -                               -
+bc3d93e3-ee95-471a-8341-02881794fcfa  zbuilder          sdc:sdc:smartos:1.6.3           2012-05-02
+[root@anto ~]#
 ```
 
 Installing
 ----------
 
-Drop the `ancestry` script into `/opt/local/bin`. Enjoy.
+Drop the `ancestry` script into `/opt/local/bin` on the GZ. Enjoy.
 
 Bugs and Limitations
 --------------------
