@@ -5,8 +5,6 @@
 var exec = require('child_process').exec;
 var sprintf = require('/usr/node/node_modules/sprintf').sprintf;
 
-// -- vmadm list --
-
 function parseVmadmList(stdout, cb) {
     var vms = []
     var lines = stdout.split('\n');
@@ -30,8 +28,6 @@ function vmadmList(cb) {
         parseVmadmList(stdout, cb);
     });
 }
-
-// -- imgadm list --
 
 function parseImgadmList(stdout, cb) {
     var lines = stdout.split('\n');
@@ -58,24 +54,6 @@ function imgadmList(cb) {
     });
 }
 
-// -- vmadm get --
-
-function parseVmadmGet(stdout, imgs, cb) {
-    var obj = JSON.parse(stdout);
-    var iuuid = obj.image_uuid || obj.disks[0].image_uuid;
-    var vmobj = {vm: obj.uuid, alias: obj.alias, img: iuuid, img_name: imgs[iuuid]};
-    cb(null, vmobj);
-}
-
-function vmadmGet(vm, imgs, cb) {
-    exec('vmadm get ' + vm, function (err, stdout, stderr) {
-        if (err) { throw err; }
-        parseVmadmGet(stdout, imgs, cb);
-    });
-}
-
-// -- main --
-
 var vms, imgs;
 
 vmadmList(function (err, tvms) {
@@ -93,17 +71,57 @@ imgadmList(function (err, timgs) {
 });
 
 function output(vms, imgs) {
-    function image(image_uuid) {
+    function imageName(image_uuid) {
         if (!image_uuid || !imgs[image_uuid])
             return {urn: '-', published: '-'};
         return imgs[image_uuid];
     }
 
-    var format = '%-36s  %-16s  %-30s  %-10s';
-    console.log(sprintf(format, 'UUID', 'ALIAS', 'IMAGE', 'PUBLISHED'));
-    for (var uuid in vms) {
-        var img = image(vms[uuid].image_uuid);
-        console.log(sprintf(format, uuid, vms[uuid].alias, img.urn, img.published));
+    if (process.argv.indexOf('-t') > 0) {
+        for (var image_uuid in imgs) {
+            var img = imgs[image_uuid];
+            var c = [];
+            var i;
+
+            for (var vm_uuid in vms) {
+                var vm = vms[vm_uuid];
+                if (vm.image_uuid === image_uuid)
+                    c.push(vm.alias + ' (' + vm_uuid + ')');
+            }
+
+            console.log(img.urn + ' (' + img.published + ')');
+            if (!c.length) {
+                console.log('\u2514\u2574(no image)');
+            } else {
+                for (i = 0; i < c.length - 1; i++)
+                    console.log('\u251c\u2574' + c[i]);
+                console.log('\u2514\u2574' + c[i]);
+            }
+
+            console.log()
+        }
+
+        var unknown = [];
+        for (var vm_uuid in vms) {
+            var vm = vms[vm_uuid];
+            if (!vm.image_uuid)
+                unknown.push(vm.alias + ' (' + vm_uuid + ')');
+        }
+
+        if (unknown) {
+            var i;
+            console.log('(no image)');
+            for (i = 0; i < unknown.length - 1; i++)
+                console.log('\u251c\u2574' + unknown[i]);
+            console.log('\u2514\u2574' + unknown[i]);
+        }
+    } else {
+        var format = '%-36s  %-16s  %-30s  %-10s';
+        console.log(sprintf(format, 'UUID', 'ALIAS', 'IMAGE', 'PUBLISHED'));
+        for (var uuid in vms) {
+            var img = imageName(vms[uuid].image_uuid);
+            console.log(sprintf(format, uuid, vms[uuid].alias, img.urn, img.published));
+        }
     }
 }
 
