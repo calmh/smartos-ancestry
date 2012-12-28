@@ -3,23 +3,29 @@
 "use strict";
 
 var exec = require('child_process').exec;
-
-var colwidth = 16;
-var spacer = ' ';
-while (spacer.length < colwidth) {
-    spacer += ' ';
-}
+var sprintf = require('/usr/node/node_modules/sprintf').sprintf;
 
 // -- vmadm list --
 
 function parseVmadmList(stdout, cb) {
+    var vms = []
     var lines = stdout.split('\n');
-    var uuids = lines.map(function (line) { return line.split(':')[0]; }).filter(function (u) { return u.length > 0; });
-    cb(null, uuids);
+
+    lines.forEach(function (line) {
+        var fields = line.split(':');
+        var uuid = fields[0];
+        var alias = fields[1];
+        var image_uuid = fields[2] || fields[3];
+        if (uuid)
+            vms[uuid] = { alias: alias, image_uuid: image_uuid };
+
+    });
+
+    cb(null, vms);
 }
 
 function vmadmList(cb) {
-    exec('vmadm list -p', function (err, stdout, stderr) {
+    exec('vmadm list -po uuid,alias,image_uuid,disks.0.image_uuid', function (err, stdout, stderr) {
         if (err) { throw err; }
         parseVmadmList(stdout, cb);
     });
@@ -30,12 +36,18 @@ function vmadmList(cb) {
 function parseImgadmList(stdout, cb) {
     var lines = stdout.split('\n');
     var imgs = {};
+
     lines.forEach(function (line) {
         var fields = line.split(/ +/);
-        if (fields[0].match(/^[0-9a-f-]+$/)) {
-            imgs[fields[0]] = fields[3];
+        var uuid = fields[0];
+        var os = fields[1];
+        var published = fields[2];
+        var urn = fields[3];
+        if (uuid.match(/^[0-9a-f-]+$/)) {
+            imgs[uuid] = { os: os, published: published, urn: urn };
         }
     });
+
     cb(null, imgs);
 }
 
@@ -62,66 +74,37 @@ function vmadmGet(vm, imgs, cb) {
     });
 }
 
-// -- fake --
-
-function fakeListVMs(cb) {
-    var stdout = "183b9ce8-38c6-460b-a5d1-9bb139be0f34:OS:1024:running:zcube\n73667e3a-8a6e-45a7-8986-09431b68268d:OS:1024:stopped:zdjango\n8061c37a-5ec3-47e8-80d7-da9fa204fde1:OS:1024:running:zmailbk\nb2535e73-0892-4183-9e02-0255c6dde661:OS:1024:running:zbackup\nba1f8d92-2ca2-4f01-9939-fa2de11a535e:OS:1024:running:zlogin\ne39c6382-3c22-4896-95b7-3e6515a6b26e:OS:1024:running:zpuppet\n0d6e2251-aa11-452b-afb7-e43c8e7bfe1c:KVM:2048:running:udev\n2828fed8-bc9e-4bb1-b165-be3534d93e19:KVM:2048:stopped:jenkins\n7dc0f886-5faa-4534-a68e-8277e167464e:KVM:2048:running:psm\n9cebcdfe-dc65-4d08-890e-c286e407fa0f:KVM:2048:stopped:winsrv\n0f5af601-51c1-4784-8d44-2ee86d36c8d2:OS:32768:running:zbuilder";
-    parseVmadmList(stdout, cb);
-}
-
-function fakeImgadmList(cb) {
-    var stdout = "UUID                                 OS      PUBLISHED  URN                    \na0f8cf30-f2ea-11e1-8a51-5793736be67c smartos 2012-08-30 sdc:sdc:standard64:1.0.7\n9551fdbc-cc9a-11e1-a9e7-eb1e788a8690 smartos 2012-07-13 sdc:sdc:standard64:1.0.1\n01b2c898-945f-11e1-a523-af1afbe22822 smartos 2012-05-02 sdc:sdc:smartos:1.6.3  \n93ae1e02-da76-11e1-9e01-a3e8dd3b47e0 smartos 2012-07-30 sdc:sdc:standard64:1.0.4\n1328ad4c-15a4-11e2-af95-efc2324aa342 linux   2012-10-14 smartos:nym:ubuntu64:12.4.1\nfa488706-0bef-11e2-b7cb-4f4af760842a linux   2011-10-01 smartos:nym:ubuntu:12.4\nf9e4be48-9466-11e1-bc41-9f993f5dff36 smartos 2012-05-02 sdc:sdc:smartos64:1.6.3\n";
-    parseImgadmList(stdout, cb);
-}
-
-function fakeVmadmGet(vm, imgs, cb) {
-    var uuids = Object.keys(imgs);
-    var img_idx = (parseInt(vm, 10) % uuids.length) || 0;
-    var img_uuid = uuids[img_idx];
-    var result = JSON.stringify({ uuid: vm, alias: vm.split('-')[0], image_uuid: img_uuid });
-    parseVmadmGet(result, imgs, cb);
-}
-
-if (process.platform !== 'sunos') {
-    console.log('*** Not running under SunOS -- invoking fake/demo/debugging mode ***');
-    vmadmList = fakeListVMs;
-    imgadmList = fakeImgadmList;
-    vmadmGet = fakeVmadmGet;
-}
-
 // -- main --
 
-var res = [];
-function getAllVMs(vms, imgs, cb) {
-    var idx = res.length;
-    if (idx < vms.length) {
-        vmadmGet(vms[idx], imgs, function (err, r) {
-            res.push([r.vm, r.alias, r.img_name]);
-            getAllVMs(vms, imgs, cb);
-        });
-    } else {
-        cb(res);
+var vms, imgs;
+
+vmadmList(function (err, tvms) {
+    if (err) { throw err; }
+    vms = tvms;
+    if (imgs)
+        output(vms, imgs);
+});
+
+imgadmList(function (err, timgs) {
+    if (err) { throw err; }
+    imgs = timgs;
+    if (vms)
+        output(vms, imgs);
+});
+
+function output(vms, imgs) {
+    function image(image_uuid) {
+        if (!image_uuid || !imgs[image_uuid])
+            return {urn: '-', published: '-'};
+        return imgs[image_uuid];
+    }
+
+    var format = '%-36s  %-16s  %-30s  %-10s';
+    console.log(sprintf(format, 'UUID', 'ALIAS', 'IMAGE', 'PUBLISHED'));
+    for (var uuid in vms) {
+        var img = image(vms[uuid].image_uuid);
+        console.log(sprintf(format, uuid, vms[uuid].alias, img.urn, img.published));
     }
 }
-
-vmadmList(function (err, vms) {
-    if (err) { throw err; }
-
-    imgadmList(function (err, imgs) {
-        if (err) { throw err; }
-        getAllVMs(vms, imgs, function (lines) {
-            console.log('UUID                                  ALIAS            IMAGE');
-            lines.sort();
-            for (var i = 0; i < lines.length; i++) {
-                var uuid = lines[i][0];
-                var alias = lines[i][1];
-                var image = lines[i][2];
-                var sl = colwidth - alias.length;
-                var sp = spacer.substr(0, sl);
-                console.log(uuid + '  ' + alias + sp + ' ' + (image || '<Unknown>'));
-            }
-        });
-    });
-});
 
 // vim: set ft=javascript:
