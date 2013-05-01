@@ -3,10 +3,11 @@
 "use strict";
 
 var exec = require('child_process').exec;
-var sprintf = require('/usr/node/node_modules/sprintf').sprintf;
+var async = require('/usr/node/node_modules/async.js');
+var sprintf = require('/usr/node/node_modules/sprintf.js').sprintf;
 
 function parseVmadmList(stdout, cb) {
-    var vms = []
+    var vms = {};
     var lines = stdout.split('\n');
 
     lines.forEach(function (line) {
@@ -24,7 +25,9 @@ function parseVmadmList(stdout, cb) {
 
 function vmadmList(cb) {
     exec('vmadm list -po uuid,alias,image_uuid,disks.0.image_uuid', function (err, stdout, stderr) {
-        if (err) { throw err; }
+        if (err) {
+            throw err;
+        }
         parseVmadmList(stdout, cb);
     });
 }
@@ -36,11 +39,8 @@ function parseImgadmList(stdout, cb) {
     lines.forEach(function (line) {
         var fields = line.split(/ +/);
         var uuid = fields[0];
-        var os = fields[1];
-        var published = fields[2];
-        var urn = fields[3];
         if (uuid.match(/^[0-9a-f-]+$/)) {
-            imgs[uuid] = { os: os, published: published, urn: urn };
+            imgs[uuid] = { name: fields[1], version: fields[2], os: fields[3], published: fields[4], used: 0 };
         }
     });
 
@@ -49,80 +49,53 @@ function parseImgadmList(stdout, cb) {
 
 function imgadmList(cb) {
     exec('imgadm list', function (err, stdout, stderr) {
-        if (err) { throw err; }
+        if (err) {
+            throw err;
+        }
         parseImgadmList(stdout, cb);
     });
 }
 
-var vms, imgs;
-
-vmadmList(function (err, tvms) {
-    if (err) { throw err; }
-    vms = tvms;
-    if (imgs)
-        output(vms, imgs);
-});
-
-imgadmList(function (err, timgs) {
-    if (err) { throw err; }
-    imgs = timgs;
-    if (vms)
-        output(vms, imgs);
-});
-
 function output(vms, imgs) {
-    function imageName(image_uuid) {
-        if (!image_uuid || !imgs[image_uuid])
-            return {urn: '-', published: '-'};
-        return imgs[image_uuid];
-    }
+    var format = '%-36s  %-12s  %-16s  %-8s';
 
-    if (process.argv.indexOf('-t') > 0) {
-        for (var image_uuid in imgs) {
-            var img = imgs[image_uuid];
-            var c = [];
-            var i;
+    if (process.argv.indexOf('-v') !== -1) {
+        console.log(sprintf(format, 'UUID', 'ALIAS', 'IMAGE', 'VERSION'));
 
-            for (var vm_uuid in vms) {
-                var vm = vms[vm_uuid];
-                if (vm.image_uuid === image_uuid)
-                    c.push(vm.alias + ' (' + vm_uuid + ')');
-            }
+        var uuids = Object.keys(vms);
+        uuids.sort();
 
-            console.log(img.urn + ' (' + img.published + ')');
-            if (!c.length) {
-                console.log('\u2514\u2574(no image)');
-            } else {
-                for (i = 0; i < c.length - 1; i++)
-                    console.log('\u251c\u2574' + c[i]);
-                console.log('\u2514\u2574' + c[i]);
-            }
-
-            console.log()
+        for (var i = 0; i < uuids.length; i++) {
+            var uuid = uuids[i];
+            var vm = vms[uuid];
+            var img = imgs[vm.image_uuid] || {used: 0};
+            console.log(sprintf(format, uuid, vm.alias, img.name || '-', img.version || '-'));
         }
-
-        var unknown = [];
-        for (var vm_uuid in vms) {
-            var vm = vms[vm_uuid];
-            if (!vm.image_uuid)
-                unknown.push(vm.alias + ' (' + vm_uuid + ')');
-        }
-
-        if (unknown) {
-            var i;
-            console.log('(no image)');
-            for (i = 0; i < unknown.length - 1; i++)
-                console.log('\u251c\u2574' + unknown[i]);
-            console.log('\u2514\u2574' + unknown[i]);
-        }
-    } else {
-        var format = '%-36s  %-16s  %-30s  %-10s';
-        console.log(sprintf(format, 'UUID', 'ALIAS', 'IMAGE', 'PUBLISHED'));
+    } else if (process.argv.indexOf('-i') !== -1) {
+        console.log(sprintf(format, 'UUID', 'NAME', 'VERSION', 'USAGE'));
         for (var uuid in vms) {
-            var img = imageName(vms[uuid].image_uuid);
-            console.log(sprintf(format, uuid, vms[uuid].alias, img.urn, img.published));
+            var img = imgs[vms[uuid].image_uuid] || {used: 0};
+            img.used += 1;
+        }
+
+        var uuids = Object.keys(imgs);
+        uuids.sort();
+
+        for (var i = 0; i < uuids.length; i++) {
+            var uuid = uuids[i];
+            var img = imgs[uuid];
+            console.log(sprintf(format, uuid, img.name, img.version, img.used));
         }
     }
 }
 
-// vim: set ft=javascript:
+if (process.argv.indexOf('-v') === -1 && process.argv.indexOf('-i') === -1) {
+    console.log('Usage:\n  ancestry -v  # Display VMs and their base\n  ancestry -i  # Display images and their usage count')
+} else {
+    async.parallel([vmadmList, imgadmList], function (err, res) {
+        if (err) {
+            throw err;
+        }
+        output(res[0], res[1]);
+    });
+}
