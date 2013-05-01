@@ -40,7 +40,11 @@ f9e4be48-9466-11e1-bc41-9f993f5dff36  smartos64     1.6.3             1
 Installing
 ----------
 
-Drop the `ancestry` script into `/opt/local/bin` on the GZ. Enjoy.
+```
+curl -k https://raw.github.com/calmh/smartos-ancestry/master/ancestry \
+   > /opt/local/bin/ancestry \
+   && chmod 755 /opt/local/bin/ancestry
+```
 
 Once installed, you can use `ancestry -u` to update to the latest version.
 
