@@ -1,10 +1,13 @@
 #!/usr/node/bin/node
 
-"use strict";
+'use strict';
 
 var exec = require('child_process').exec;
-var async = require('/usr/node/node_modules/async.js');
-var sprintf = require('/usr/node/node_modules/sprintf.js').sprintf;
+var fs = require('fs');
+var https = require('https');
+
+var updateUrl = 'https://raw.github.com/calmh/smartos-ancestry/master/ancestry';
+var updateFile = process.argv[1];
 
 function parseVmadmList(stdout, cb) {
     var vms = {};
@@ -89,9 +92,39 @@ function output(vms, imgs) {
     }
 }
 
-if (process.argv.indexOf('-v') === -1 && process.argv.indexOf('-i') === -1) {
-    console.log('Usage:\n  ancestry -v  # Display VMs and their base\n  ancestry -i  # Display images and their usage count')
+function update() {
+    var buf = '';
+    var newFile = updateFile + '.new';
+
+    var req = https.get(updateUrl, function (res) {
+        res.on('data', function (data) {
+            buf += data;
+        });
+
+        res.on('end', function () {
+            fs.writeFileSync(newFile, buf);
+            fs.chmodSync(newFile, 493 /* 0755 */);
+            fs.renameSync(newFile, updateFile);
+            console.log('Updated ' + updateFile);
+        })
+    });
+
+    req.on('error', function (e) {
+        console.log('Failed to update: ' + e.message);
+    });
+}
+
+if (process.argv.indexOf('-u') !== -1) {
+    update();
+} else if (process.argv.indexOf('-v') === -1 && process.argv.indexOf('-i') === -1) {
+    console.log('Usage:');
+    console.log('  ancestry -v  # Display VMs and their base');
+    console.log('  ancestry -i  # Display images and their usage count');
+    console.log('  ancestry -u  # Update ancestry script to latest version');
 } else {
+    var async = require('/usr/node/node_modules/async.js');
+    var sprintf = require('/usr/node/node_modules/sprintf.js').sprintf;
+
     async.parallel([vmadmList, imgadmList], function (err, res) {
         if (err) {
             throw err;

@@ -10,6 +10,7 @@ VM:s should be upgraded/migrated. Like so:
 Usage:
   ancestry -v  # Display VMs and their base
   ancestry -i  # Display images and their usage count
+  ancestry -u  # Update ancestry script to latest version
 [root@anto ~]# ancestry -v
 UUID                                  ALIAS         IMAGE             VERSION
 0d6e2251-aa11-452b-afb7-e43c8e7bfe1c  plex          ubuntu64          12.4.1
@@ -40,6 +41,8 @@ Installing
 ----------
 
 Drop the `ancestry` script into `/opt/local/bin` on the GZ. Enjoy.
+
+Once installed, you can use `ancestry -u` to update to the latest version.
 
 Bugs and Limitations
 --------------------
